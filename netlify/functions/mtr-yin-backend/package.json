@@ -1,0 +1,13 @@
+{
+  "name": "mtr-yin-backend",
+  "version": "1.0.0",
+  "description": "MTR YIN - Backend de venta de entradas",
+  "scripts": {
+    "dev": "netlify dev"
+  },
+  "dependencies": {
+    "stripe": "^14.0.0",
+    "nodemailer": "^6.9.0",
+    "qrcode": "^1.5.3"
+  }
+}
