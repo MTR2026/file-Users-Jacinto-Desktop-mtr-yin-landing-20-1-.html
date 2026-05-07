@@ -1,16 +1,10 @@
 // netlify/functions/create-payment-intent.js
-// MTR YIN — Crear PaymentIntent en Stripe
-//
-// Variables de entorno necesarias en Netlify:
-//   STRIPE_SECRET_KEY   → tu clave secreta de Stripe (sk_live_... o sk_test_...)
-//   ALLOWED_ORIGIN      → dominio de tu landing (ej: https://mtryin.com)
-
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 const TICKET_PRICES = {
-  general:      3500,   // 35€ en céntimos
-  primera_fila: 5000,   // 50€
-  vip_cena:     7500,   // 75€
+  general:      3500,
+  primera_fila: 5000,
+  vip_cena:     7500,
 };
 
 const TICKET_NAMES = {
@@ -19,9 +13,14 @@ const TICKET_NAMES = {
   vip_cena:     'VIP + Cena',
 };
 
+// Códigos de descuento válidos (mismos que en el frontend)
+const PROMO_CODES = {
+  'PRENSA2026':   100,
+  'PATROCINADOR': 50,
+  'MTRYIN10':     10,
+};
+
 exports.handler = async (event) => {
-  // CORS
-  const origin = event.headers.origin || event.headers.Origin || '';
   const allowedOrigin = process.env.ALLOWED_ORIGIN || '*';
   const headers = {
     'Access-Control-Allow-Origin': allowedOrigin,
@@ -30,34 +29,40 @@ exports.handler = async (event) => {
     'Content-Type': 'application/json',
   };
 
-  if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 204, headers, body: '' };
-  }
-
-  if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, headers, body: JSON.stringify({ error: 'Método no permitido' }) };
-  }
+  if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers, body: '' };
+  if (event.httpMethod !== 'POST') return { statusCode: 405, headers, body: JSON.stringify({ error: 'Método no permitido' }) };
 
   try {
-    const { ticket, qty, email, name } = JSON.parse(event.body);
+    const { ticket, qty, email, name, discount, promoCode } = JSON.parse(event.body);
 
-    // Validaciones
-    if (!ticket || !TICKET_PRICES[ticket]) {
-      return { statusCode: 400, headers, body: JSON.stringify({ error: 'Tipo de entrada inválido' }) };
-    }
+    if (!ticket || !TICKET_PRICES[ticket]) return { statusCode: 400, headers, body: JSON.stringify({ error: 'Tipo de entrada inválido' }) };
     const quantity = parseInt(qty, 10);
-    if (!quantity || quantity < 1 || quantity > 10) {
-      return { statusCode: 400, headers, body: JSON.stringify({ error: 'Cantidad inválida (1-10)' }) };
-    }
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return { statusCode: 400, headers, body: JSON.stringify({ error: 'Email inválido' }) };
+    if (!quantity || quantity < 1 || quantity > 10) return { statusCode: 400, headers, body: JSON.stringify({ error: 'Cantidad inválida' }) };
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { statusCode: 400, headers, body: JSON.stringify({ error: 'Email inválido' }) };
+
+    // Verificar descuento en el backend (seguridad)
+    let discountPct = 0;
+    if (promoCode && PROMO_CODES[promoCode.toUpperCase()] !== undefined) {
+      discountPct = PROMO_CODES[promoCode.toUpperCase()];
+    } else if (discount && typeof discount === 'number') {
+      discountPct = discount;
     }
 
-    const amount = TICKET_PRICES[ticket] * quantity;
+    const baseAmount = TICKET_PRICES[ticket] * quantity;
+    const discountAmount = Math.round(baseAmount * discountPct / 100);
+    const finalAmount = baseAmount - discountAmount;
 
-    // Crear PaymentIntent en Stripe
+    // Si es 100% descuento, registrar pero no cobrar
+    if (finalAmount === 0) {
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ free: true, message: 'Entrada gratuita' }),
+      };
+    }
+
     const paymentIntent = await stripe.paymentIntents.create({
-      amount,
+      amount: finalAmount,
       currency: 'eur',
       receipt_email: email,
       metadata: {
@@ -66,26 +71,19 @@ exports.handler = async (event) => {
         quantity: String(quantity),
         buyer_name: name || '',
         buyer_email: email,
+        discount_pct: String(discountPct),
         event: 'MTR YIN — 20 Junio 2026 Madrid',
       },
-      description: `MTR YIN — ${quantity}x ${TICKET_NAMES[ticket]}`,
+      description: `MTR YIN — ${quantity}x ${TICKET_NAMES[ticket]}${discountPct > 0 ? ` (-${discountPct}%)` : ''}`,
     });
 
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({
-        clientSecret: paymentIntent.client_secret,
-        amount,
-        currency: 'eur',
-      }),
+      body: JSON.stringify({ clientSecret: paymentIntent.client_secret }),
     };
   } catch (err) {
     console.error('Stripe error:', err);
-    return {
-      statusCode: 500,
-      headers,
-      body: JSON.stringify({ error: err.message || 'Error interno del servidor' }),
-    };
+    return { statusCode: 500, headers, body: JSON.stringify({ error: err.message }) };
   }
 };
