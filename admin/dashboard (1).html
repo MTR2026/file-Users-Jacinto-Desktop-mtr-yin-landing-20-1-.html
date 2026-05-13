@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MTR YIN — Panel de Control</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;900&family=Barlow:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#0a0a0a; color:#f0ede8; font-family:'Barlow',sans-serif; min-height:100vh; }
+
+  /* LOGIN */
+  .login-screen { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; padding:32px 20px; }
+  .logo-block { text-align:center; margin-bottom:40px; }
+  .logo-block .eyebrow { font-size:11px; letter-spacing:0.4em; text-transform:uppercase; color:#b0aca5; margin-bottom:10px; }
+  .logo-block h1 { font-family:'Barlow Condensed',sans-serif; font-size:52px; font-weight:900; line-height:0.9; }
+  .logo-block .sep { width:100%; height:4px; background:#f0ede8; margin:5px 0; }
+  .logo-block .sub { font-size:11px; letter-spacing:0.3em; text-transform:uppercase; color:#b0aca5; margin-top:8px; }
+  .login-input { width:100%; max-width:320px; background:rgba(240,237,232,0.05); border:1px solid rgba(240,237,232,0.2); color:#f0ede8; font-family:'Barlow',sans-serif; font-size:16px; padding:14px 16px; outline:none; margin-bottom:12px; text-align:center; }
+  .login-input::placeholder { color:rgba(240,237,232,0.3); }
+  .login-btn { width:100%; max-width:320px; font-family:'Barlow Condensed',sans-serif; font-size:14px; font-weight:800; letter-spacing:0.25em; text-transform:uppercase; background:#f0ede8; color:#0a0a0a; border:none; padding:16px; cursor:pointer; }
+  .login-btn:hover { opacity:0.88; }
+  #login-error { color:#e74c3c; font-size:13px; margin-top:8px; min-height:20px; }
+
+  /* DASHBOARD */
+  .dashboard { display:none; flex-direction:column; min-height:100vh; }
+
+  /* TOP BAR */
+  .topbar { background:#111; border-bottom:1px solid rgba(240,237,232,0.08); padding:14px 24px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; position:sticky; top:0; z-index:10; }
+  .topbar-logo { font-family:'Barlow Condensed',sans-serif; font-size:22px; font-weight:900; }
+  .topbar-actions { display:flex; gap:8px; align-items:center; }
+  .btn-sm { font-family:'Barlow Condensed',sans-serif; font-size:12px; font-weight:700; letter-spacing:0.15em; text-transform:uppercase; background:transparent; border:1px solid rgba(240,237,232,0.2); color:#f0ede8; padding:8px 16px; cursor:pointer; transition:all 0.2s; white-space:nowrap; }
+  .btn-sm:hover { background:rgba(240,237,232,0.08); }
+  .btn-sm.primary { background:#f0ede8; color:#0a0a0a; border-color:#f0ede8; }
+  .btn-sm.primary:hover { opacity:0.88; }
+  .btn-sm.danger { border-color:rgba(231,76,60,0.4); color:#e74c3c; }
+  .btn-sm.danger:hover { background:rgba(231,76,60,0.1); }
+
+  /* STATS */
+  .stats-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:1px; background:rgba(240,237,232,0.08); border-bottom:1px solid rgba(240,237,232,0.08); }
+  .stat-card { background:#0a0a0a; padding:20px; }
+  .stat-label { font-size:10px; letter-spacing:0.3em; text-transform:uppercase; color:#b0aca5; margin-bottom:6px; }
+  .stat-value { font-family:'Barlow Condensed',sans-serif; font-size:34px; font-weight:900; line-height:1; }
+  .stat-value.green { color:#2ecc71; }
+  .stat-value.orange { color:#f39c12; }
+  .stat-value.blue { color:#3498db; }
+
+  /* FILTERS */
+  .filters { padding:16px 24px; display:flex; gap:10px; flex-wrap:wrap; align-items:center; border-bottom:1px solid rgba(240,237,232,0.06); }
+  .search-input { background:rgba(240,237,232,0.05); border:1px solid rgba(240,237,232,0.15); color:#f0ede8; font-family:'Barlow',sans-serif; font-size:14px; padding:10px 14px; outline:none; flex:1; min-width:180px; }
+  .search-input::placeholder { color:rgba(240,237,232,0.3); }
+  .filter-btn { font-family:'Barlow Condensed',sans-serif; font-size:11px; font-weight:700; letter-spacing:0.15em; text-transform:uppercase; background:transparent; border:1px solid rgba(240,237,232,0.15); color:#b0aca5; padding:8px 14px; cursor:pointer; transition:all 0.2s; }
+  .filter-btn:hover, .filter-btn.active { background:rgba(240,237,232,0.08); border-color:rgba(240,237,232,0.4); color:#f0ede8; }
+  .filter-btn.used-filter.active { border-color:#2ecc71; color:#2ecc71; }
+  .filter-btn.pending-filter.active { border-color:#f39c12; color:#f39c12; }
+
+  /* SELECTION BAR */
+  .selection-bar { display:none; padding:10px 24px; background:rgba(231,76,60,0.08); border-bottom:1px solid rgba(231,76,60,0.2); align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+  .selection-bar.show { display:flex; }
+  .selection-info { font-size:13px; color:#e74c3c; }
+  .selection-actions { display:flex; gap:8px; }
+
+  /* TABLE */
+  .table-container { flex:1; overflow-x:auto; padding:0 24px 24px; }
+  table { width:100%; border-collapse:collapse; min-width:700px; margin-top:16px; }
+  thead th { font-size:10px; letter-spacing:0.2em; text-transform:uppercase; color:#b0aca5; padding:10px 12px; text-align:left; border-bottom:1px solid rgba(240,237,232,0.1); white-space:nowrap; }
+  thead th.check-col { width:40px; }
+  tbody tr { border-bottom:1px solid rgba(240,237,232,0.04); transition:background 0.15s; }
+  tbody tr:hover { background:rgba(240,237,232,0.03); }
+  tbody tr.selected { background:rgba(231,76,60,0.05); }
+  tbody td { padding:11px 12px; font-size:13px; color:#f0ede8; vertical-align:middle; }
+  tbody td.dim { color:#b0aca5; }
+
+  /* CHECKBOX */
+  input[type=checkbox] { width:16px; height:16px; cursor:pointer; accent-color:#e74c3c; }
+
+  .badge { display:inline-block; font-family:'Barlow Condensed',sans-serif; font-size:10px; font-weight:700; letter-spacing:0.15em; text-transform:uppercase; padding:3px 10px; }
+  .badge.used { background:rgba(46,204,113,0.12); color:#2ecc71; border:1px solid rgba(46,204,113,0.3); }
+  .badge.pending { background:rgba(243,156,18,0.12); color:#f39c12; border:1px solid rgba(243,156,18,0.3); }
+  .badge.general { background:rgba(240,237,232,0.06); color:#b0aca5; border:1px solid rgba(240,237,232,0.1); }
+  .badge.primera { background:rgba(52,152,219,0.1); color:#3498db; border:1px solid rgba(52,152,219,0.2); }
+  .badge.vip { background:rgba(155,89,182,0.1); color:#9b59b6; border:1px solid rgba(155,89,182,0.2); }
+  .code-mono { font-family:monospace; font-size:11px; color:rgba(240,237,232,0.4); }
+
+  .del-btn { background:transparent; border:1px solid rgba(231,76,60,0.3); color:#e74c3c; font-family:'Barlow Condensed',sans-serif; font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; padding:4px 10px; cursor:pointer; transition:all 0.2s; }
+  .del-btn:hover { background:rgba(231,76,60,0.15); border-color:#e74c3c; }
+
+  /* CONFIRM DIALOG */
+  .confirm-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:200; align-items:center; justify-content:center; padding:20px; }
+  .confirm-overlay.show { display:flex; }
+  .confirm-box { background:#1a1a18; border:1px solid rgba(240,237,232,0.15); padding:40px; max-width:400px; width:100%; text-align:center; }
+  .confirm-box h3 { font-family:'Barlow Condensed',sans-serif; font-size:24px; font-weight:900; margin-bottom:12px; color:#e74c3c; }
+  .confirm-box p { font-size:14px; color:#b0aca5; line-height:1.6; margin-bottom:28px; }
+  .confirm-actions { display:flex; gap:12px; }
+  .confirm-actions button { flex:1; font-family:'Barlow Condensed',sans-serif; font-size:13px; font-weight:800; letter-spacing:0.15em; text-transform:uppercase; padding:14px; border:none; cursor:pointer; }
+  .confirm-cancel { background:transparent; border:1px solid rgba(240,237,232,0.2) !important; color:#f0ede8; }
+  .confirm-delete { background:#e74c3c; color:#f0ede8; }
+
+  /* EMPTY / LOADING */
+  .empty-state { text-align:center; padding:60px 20px; color:#b0aca5; }
+  .empty-state p { font-size:14px; margin-top:8px; }
+  .loading { text-align:center; padding:60px 20px; color:#b0aca5; font-size:13px; letter-spacing:0.1em; }
+
+  @media (max-width:600px) {
+    .topbar { padding:12px 16px; }
+    .filters { padding:12px 16px; }
+    .table-container { padding:0 16px 16px; }
+    .stats-grid { grid-template-columns:repeat(2,1fr); }
+  }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-screen" id="login-screen">
+  <div class="logo-block">
+    <p class="eyebrow">Muay Thai Revolution</p>
+    <h1>MTR</h1>
+    <div class="sep"></div>
+    <h1>YIN</h1>
+    <p class="sub">Panel de Control · Entradas</p>
+  </div>
+  <input type="password" class="login-input" id="secret-input" placeholder="Clave de administración" autocomplete="off">
+  <button class="login-btn" onclick="doLogin()">Acceder</button>
+  <p id="login-error"></p>
+</div>
+
+<!-- DASHBOARD -->
+<div class="dashboard" id="dashboard">
+
+  <div class="topbar">
+    <div class="topbar-logo">MTR YIN · Entradas</div>
+    <div class="topbar-actions">
+      <button class="btn-sm" onclick="loadTickets()">↻ Actualizar</button>
+      <button class="btn-sm" onclick="exportCSV()">Exportar CSV</button>
+      <button class="btn-sm primary" onclick="logout()">Salir</button>
+    </div>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card"><p class="stat-label">Total entradas</p><p class="stat-value" id="stat-total">—</p></div>
+    <div class="stat-card"><p class="stat-label">Validadas</p><p class="stat-value green" id="stat-used">—</p></div>
+    <div class="stat-card"><p class="stat-label">Pendientes</p><p class="stat-value orange" id="stat-pending">—</p></div>
+    <div class="stat-card"><p class="stat-label">General</p><p class="stat-value" id="stat-general">—</p></div>
+    <div class="stat-card"><p class="stat-label">Primera Fila</p><p class="stat-value blue" id="stat-primera">—</p></div>
+    <div class="stat-card"><p class="stat-label">VIP + Cena</p><p class="stat-value" id="stat-vip">—</p></div>
+  </div>
+
+  <div class="filters">
+    <input type="text" class="search-input" id="search-input" placeholder="Buscar por nombre, email, código, número (#0001) o escuela..." oninput="filterTickets()">
+    <button class="filter-btn active" id="filter-all" onclick="setFilter('all')">Todas</button>
+    <button class="filter-btn used-filter" id="filter-used" onclick="setFilter('used')">Validadas</button>
+    <button class="filter-btn pending-filter" id="filter-pending" onclick="setFilter('pending')">Pendientes</button>
+  </div>
+
+  <div class="selection-bar" id="selection-bar">
+    <span class="selection-info" id="selection-info">0 entradas seleccionadas</span>
+    <div class="selection-actions">
+      <button class="btn-sm" onclick="deselectAll()">Cancelar</button>
+      <button class="btn-sm danger" onclick="confirmDeleteSelected()">🗑 Eliminar seleccionadas</button>
+    </div>
+  </div>
+
+  <div class="table-container">
+    <div class="loading" id="loading">Cargando entradas...</div>
+    <table id="tickets-table" style="display:none;">
+      <thead>
+        <tr>
+          <th class="check-col"><input type="checkbox" id="select-all" onchange="toggleSelectAll()"></th>
+          <th>#</th>
+          <th>Estado</th>
+          <th>Nombre</th>
+          <th>Email</th>
+          <th>Tipo</th>
+          <th>Nº Entrada</th>
+          <th>Escuela</th>
+          <th>Validada</th>
+          <th>Código</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="tickets-body"></tbody>
+    </table>
+    <div class="empty-state" id="empty-state" style="display:none;">
+      <p style="font-size:32px;">🎟️</p>
+      <p>No hay entradas que coincidan</p>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM DIALOG -->
+<div class="confirm-overlay" id="confirm-overlay">
+  <div class="confirm-box">
+    <h3>¿Eliminar entradas?</h3>
+    <p id="confirm-text">Esta acción no se puede deshacer.</p>
+    <div class="confirm-actions">
+      <button class="confirm-cancel" onclick="closeConfirm()">Cancelar</button>
+      <button class="confirm-delete" onclick="executeDelete()">Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let adminSecret = '';
+  let allTickets = [];
+  let filteredTickets = [];
+  let currentFilter = 'all';
+  let pendingDeleteCodes = [];
+
+  function doLogin() {
+    const val = document.getElementById('secret-input').value.trim();
+    if (!val) { document.getElementById('login-error').textContent = 'Introduce la clave.'; return; }
+    adminSecret = val;
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'flex';
+    loadTickets();
+  }
+
+  document.getElementById('secret-input').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+  function logout() {
+    adminSecret = '';
+    allTickets = [];
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('dashboard').style.display = 'none';
+    document.getElementById('secret-input').value = '';
+  }
+
+  async function loadTickets() {
+    document.getElementById('loading').style.display = 'block';
+    document.getElementById('tickets-table').style.display = 'none';
+    document.getElementById('empty-state').style.display = 'none';
+
+    try {
+      const res = await fetch('/.netlify/functions/validate-ticket?action=list', {
+        headers: { 'x-admin-secret': adminSecret },
+      });
+      if (res.status === 401) { logout(); return; }
+      const data = await res.json();
+      allTickets = data.tickets || [];
+      renderStats();
+      filterTickets();
+    } catch (err) {
+      document.getElementById('loading').textContent = 'Error de conexión.';
+    }
+  }
+
+  function renderStats() {
+    const total = allTickets.length;
+    const used = allTickets.filter(t => t.used).length;
+    document.getElementById('stat-total').textContent = total;
+    document.getElementById('stat-used').textContent = used;
+    document.getElementById('stat-pending').textContent = total - used;
+    document.getElementById('stat-general').textContent = allTickets.filter(t => t.ticket_type === 'general').length;
+    document.getElementById('stat-primera').textContent = allTickets.filter(t => t.ticket_type === 'primera_fila').length;
+    document.getElementById('stat-vip').textContent = allTickets.filter(t => t.ticket_type === 'vip_cena').length;
+  }
+
+  function setFilter(f) {
+    currentFilter = f;
+    ['all','used','pending'].forEach(x => document.getElementById(`filter-${x}`).classList.toggle('active', x === f));
+    filterTickets();
+  }
+
+  function filterTickets() {
+    const search = document.getElementById('search-input').value.toLowerCase();
+    let filtered = allTickets;
+
+    if (currentFilter === 'used') filtered = filtered.filter(t => t.used);
+    if (currentFilter === 'pending') filtered = filtered.filter(t => !t.used);
+
+    if (search) {
+      filtered = filtered.filter(t =>
+        (t.buyer_name || '').toLowerCase().includes(search) ||
+        (t.buyer_email || '').toLowerCase().includes(search) ||
+        (t.code || '').toLowerCase().includes(search) ||
+        (t.school || '').toLowerCase().includes(search) ||
+        (t.entry_number ? `#${String(t.entry_number).padStart(4,'0')}` : '').toLowerCase().includes(search)
+      );
+    }
+
+    filteredTickets = filtered;
+    renderTable(filtered);
+    updateSelectionBar();
+  }
+
+  function renderTable(tickets) {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('select-all').checked = false;
+
+    if (tickets.length === 0) {
+      document.getElementById('tickets-table').style.display = 'none';
+      document.getElementById('empty-state').style.display = 'block';
+      return;
+    }
+
+    document.getElementById('empty-state').style.display = 'none';
+    document.getElementById('tickets-table').style.display = 'table';
+
+    const tbody = document.getElementById('tickets-body');
+    tbody.innerHTML = tickets.map((t, i) => {
+      const typeBadge = t.ticket_type === 'primera_fila' ? 'primera' : t.ticket_type === 'vip_cena' ? 'vip' : 'general';
+      const typeLabel = t.ticket_type === 'primera_fila' ? 'Primera Fila' : t.ticket_type === 'vip_cena' ? 'VIP + Cena' : 'General';
+      const usedAt = t.used_at ? new Date(t.used_at).toLocaleString('es-ES', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }) : '—';
+      const entryNum = t.entry_number ? `#${String(t.entry_number).padStart(4,'0')}` : '—';
+      const code = t.code;
+
+      return `<tr id="row-${code}">
+        <td><input type="checkbox" class="row-check" data-code="${code}" onchange="updateSelectionBar()"></td>
+        <td class="dim">${i + 1}</td>
+        <td><span class="badge ${t.used ? 'used' : 'pending'}">${t.used ? 'Validada' : 'Pendiente'}</span></td>
+        <td>${t.buyer_name || '—'}</td>
+        <td class="dim">${t.buyer_email || '—'}</td>
+        <td><span class="badge ${typeBadge}">${typeLabel}</span></td>
+        <td class="dim">${entryNum}</td>
+        <td class="dim">${t.school || '—'}</td>
+        <td class="dim">${usedAt}</td>
+        <td class="code-mono">${code}</td>
+        <td><button class="del-btn" onclick="confirmDeleteOne('${code}', '${(t.buyer_name||'').replace(/'/g,"\\'")}')">Borrar</button></td>
+      </tr>`;
+    }).join('');
+  }
+
+  function toggleSelectAll() {
+    const checked = document.getElementById('select-all').checked;
+    document.querySelectorAll('.row-check').forEach(cb => {
+      cb.checked = checked;
+      document.getElementById(`row-${cb.dataset.code}`)?.classList.toggle('selected', checked);
+    });
+    updateSelectionBar();
+  }
+
+  function updateSelectionBar() {
+    const selected = document.querySelectorAll('.row-check:checked');
+    // Update row highlight
+    document.querySelectorAll('.row-check').forEach(cb => {
+      document.getElementById(`row-${cb.dataset.code}`)?.classList.toggle('selected', cb.checked);
+    });
+    const bar = document.getElementById('selection-bar');
+    if (selected.length > 0) {
+      bar.classList.add('show');
+      document.getElementById('selection-info').textContent = `${selected.length} entrada${selected.length > 1 ? 's' : ''} seleccionada${selected.length > 1 ? 's' : ''}`;
+    } else {
+      bar.classList.remove('show');
+    }
+  }
+
+  function deselectAll() {
+    document.querySelectorAll('.row-check').forEach(cb => { cb.checked = false; });
+    document.getElementById('select-all').checked = false;
+    updateSelectionBar();
+  }
+
+  function confirmDeleteOne(code, name) {
+    pendingDeleteCodes = [code];
+    document.getElementById('confirm-text').textContent = `Se eliminará la entrada de "${name || code}". Esta acción no se puede deshacer.`;
+    document.getElementById('confirm-overlay').classList.add('show');
+  }
+
+  function confirmDeleteSelected() {
+    const selected = [...document.querySelectorAll('.row-check:checked')].map(cb => cb.dataset.code);
+    if (!selected.length) return;
+    pendingDeleteCodes = selected;
+    document.getElementById('confirm-text').textContent = `Se eliminarán ${selected.length} entrada${selected.length > 1 ? 's' : ''}. Esta acción no se puede deshacer.`;
+    document.getElementById('confirm-overlay').classList.add('show');
+  }
+
+  function closeConfirm() {
+    document.getElementById('confirm-overlay').classList.remove('show');
+    pendingDeleteCodes = [];
+  }
+
+  async function executeDelete() {
+    closeConfirm();
+    if (!pendingDeleteCodes.length) return;
+
+    for (const code of pendingDeleteCodes) {
+      try {
+        await fetch('/.netlify/functions/validate-ticket', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-admin-secret': adminSecret },
+          body: JSON.stringify({ action: 'delete', code }),
+        });
+      } catch (e) { console.warn('Error eliminando', code, e); }
+    }
+
+    pendingDeleteCodes = [];
+    await loadTickets();
+  }
+
+  function exportCSV() {
+    if (!allTickets.length) return;
+    const headers = ['Código','Nombre','Email','Tipo','Entrada','Escuela','PVP','Estado','Validada'];
+    const rows = allTickets.map(t => [
+      t.code, t.buyer_name || '', t.buyer_email || '',
+      t.ticket_name || t.ticket_type,
+      t.entry_number ? `#${String(t.entry_number).padStart(4,'0')}` : '',
+      t.school || '', t.pvp ? `${t.pvp}€` : '',
+      t.used ? 'Validada' : 'Pendiente',
+      t.used_at ? new Date(t.used_at).toLocaleString('es-ES') : '',
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `mtryin-entradas-${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+  }
+
+  setInterval(() => { if (adminSecret) loadTickets(); }, 30000);
+</script>
+</body>
+</html>
